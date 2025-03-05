@@ -160,7 +160,7 @@ class oAuthController:
             print('Instance URL is not set')
             return False
 
-        url = f'{self.sf_instanceUrl}/services/data/{self.sf_apiVersion}/query/?q=SELECT+Id+FROM+Account+LIMIT+1'
+        url = f'{self.sf_instanceUrl}/services/data/{self.sf_apiVersion}/query/?q=SELECT+Id+FROM+User+LIMIT+1'
         headers = {
             'Authorization' : f'Bearer {self.sf_access_token}'
         }
@@ -259,6 +259,9 @@ class oAuthController:
         """
         
         try:
+            if not os.path.exists(self.tokenPath) or not os.path.isfile(self.tokenPath):
+                print(f'Token file not found at {self.tokenPath}')
+                return False
            
             with open(self.tokenPath, 'r') as file:
                 lines = file.readlines()
@@ -315,6 +318,7 @@ class oAuthController:
         Returns:
             bool: True if the access token is valid or successfully updated, False otherwise.
         """
+        # initComplete : bool = False
 
         # Check if the refresh token is populated
         if self.sf_refresh_token:
@@ -347,15 +351,16 @@ class oAuthController:
                 print('Exiting...')
                 os._exit(1)
             
+        return True
         
-        # Test if the new access token is valid now.
-        isAccessTokenValid = self.testAccessToken()
-        if isAccessTokenValid:
-            print('Access token is valid after an update. Ready to use.')
-            return True
-        else:
-            print('Error while updating the access token')
-            return False
+        # # Test if the new access token is valid now.
+        # isAccessTokenValid = self.testAccessToken()
+        # if isAccessTokenValid:
+        #     print('Access token is valid after an update. Ready to use.')
+        #     return True
+        # else:
+        #     print('Error while updating the access token')
+        #     return False
 
 
 if __name__ == '__main__':
