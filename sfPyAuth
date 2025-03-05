@@ -318,49 +318,46 @@ class oAuthController:
         Returns:
             bool: True if the access token is valid or successfully updated, False otherwise.
         """
-        # initComplete : bool = False
+        initComplete = None
 
-        # Check if the refresh token is populated
-        if self.sf_refresh_token:
-            print('Refresh token is available in memory.')
-
-            refreshTokenUpdated : bool = self.getNewRefreshToken()
-            if refreshTokenUpdated:
-                print('Refresh and Access tokens have been updated successfully, and is ready to use.')
-                return True
-            else:
-                print('Error while updating the refresh token. Moving on to secret code generation')        
-        
-        initRefreshTokenResult : bool = self.initRefreshToken()
-
-        if not initRefreshTokenResult:
-            print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
-            retry : bool = True
-            inputRetry = input()
-
-            if inputRetry.lower() == 'n':
-                retry = False
-
-            if retry:
-                initRefreshTokenResult : bool = self.initRefreshToken()
-
-                if not initRefreshTokenResult:
-                    print('Error while authenticating with the secret code provided. Exiting...')
-                    os._exit(1)
-            else:
-                print('Exiting...')
-                os._exit(1)
+        while not initComplete:
             
-        return True
+            # Check if the refresh token is populated
+            if self.sf_refresh_token:
+                print('Refresh token is available in memory.')
+
+                refreshTokenUpdated : bool = self.getNewRefreshToken()
+                if refreshTokenUpdated:
+                    print('Refresh and Access tokens have been updated successfully, and is ready to use.')
+                    initComplete = True
+                else:
+                    print('Error while updating the refresh token. Moving on to secret code generation')        
+            
+            initRefreshTokenResult : bool = self.initRefreshToken()
+
+            if not initRefreshTokenResult:
+                print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
+                retry : bool = True
+                inputRetry = input()
+
+                if inputRetry.lower() == 'n':
+                    retry = False
+
+                if retry:
+                    initRefreshTokenResult : bool = self.initRefreshToken()
+
+                    if not initRefreshTokenResult:
+                        print('Error while authenticating with the secret code provided. Exiting...')
+                        initComplete = False
+                else:
+                    print('Exiting...')
+                    initComplete = False
+                    
+            else:
+                initComplete = True
+                
+        return initComplete
         
-        # # Test if the new access token is valid now.
-        # isAccessTokenValid = self.testAccessToken()
-        # if isAccessTokenValid:
-        #     print('Access token is valid after an update. Ready to use.')
-        #     return True
-        # else:
-        #     print('Error while updating the access token')
-        #     return False
 
 
 if __name__ == '__main__':
