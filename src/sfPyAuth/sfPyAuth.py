@@ -8,7 +8,7 @@ Classes:
     oAuthController: Handles OAuth authentication and token management for Salesforce.
 
 Usage:
-    from oAuth import oAuthController
+    from src.sfPyAuth.sfPyAuth import oAuthController
     from simple_salesforce import Salesforce
 
     oauth = oAuthController()
@@ -27,13 +27,22 @@ import webbrowser
 import urllib.parse
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import sys
+import select
 
 devmode : bool = True
 
 class oAuthController:
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
         
-        # Load environment variables from .env file
+        ## Populate instance variables from .env file
+
+        #straight load
         load_dotenv()        
         self.sf_username : str = os.getenv('SF_USERNAME')
         self.sf_password : str = os.getenv('SF_PASSWORD')
@@ -42,39 +51,91 @@ class oAuthController:
         self.sf_instanceUrl : str = os.getenv('SF_INSTANCE_URL')
         self.sf_apiVersion : str = 'v60.0'
         self.sf_base_url : str = None
-
-        if not self.sf_username or not self.sf_consumer_key or not self.sf_consumer_secret:
-            print('Error: Salesforce credentials are not set in the environment variables. Exiting...')
-            os._exit(1)
-
-        # load the tokens from token file
-        self.tokenFolder : str = os.path.join(os.getcwd(), '.tokens')
+        
+        self.tokenFolder : str = os.path.join(os.getcwd(),'src','sfPyAuth', '.tokens')
         self.tokenFileName : str = '.token'
         self.tokenPath = os.path.join(self.tokenFolder, self.tokenFileName)
         self.sf_access_token : str = None
         self.sf_refresh_token : str = None
         self.sf_access_token_expires : str = None
-        self.localTokenHandler_load()
 
-        if not os.path.exists(self.tokenFolder):
+        # Check if the required info is available before moving on.
+        if not self.sf_username or not self.sf_consumer_key or not self.sf_consumer_secret:
+            print('Error: Salesforce credentials are not set in the environment variables. Exiting...')
+            os._exit(1)
+           
+        ## Action initTasks
+        if os.path.exists(self.tokenFolder):
+            self.localTokenHandler_load()
+        else:
             try:
                 os.mkdir(self.tokenFolder)
             except Exception as e:
                 print(f'Error while creating the token directory: {e}')
-                os._exit(1)
-
-        #  action initTasks
+                os._exit(1) 
+        
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
             print('oAuth module Initialised. Ready to roll...\n------------------------------------------\n\n')
         else:
             print('Error while initializing the oAuth module. Exiting...\n------------------------------------------\n\n')
             os._exit(1)
+            
+            
+    def localTokenHandler_load(self):
+        """
+        Loads the Salesforce access and refresh tokens into self from a local file specified by `self.tokenPath`.
+        
+        Returns:
+            bool: True if the tokens were successfully loaded, False otherwise.
+        Raises:
+            Exception: If there is an error while reading the file or parsing the tokens.
+        """
+        
+        try:
+            if not os.path.exists(self.tokenPath) or not os.path.isfile(self.tokenPath):
+                print(f'Token file not found at {self.tokenPath}')
+                return False
+           
+            with open(self.tokenPath, 'r') as file:
+                lines = file.readlines()
+                for line in lines:
+                    if 'accessToken' in line:
+                        self.sf_access_token = line.split('=')[1].strip()
+                    elif 'refreshToken' in line:
+                        self.sf_refresh_token = line.split('=')[1].strip()
+            print(f'Tokens loaded successfully from {self.tokenPath} \n')
+            return True
 
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, '_instance'):
-            cls._instance = super().__new__(cls)
-        return cls._instance
+        except Exception as e:
+            print(f'Error while loading the token: {e}')
+            return False
+        
+        
+    def localTokenHandler_save(self):
+        """
+        Saves the access and refresh tokens to a file specified by `self.tokenPath`.
+
+        Returns:
+            bool: True if the tokens were successfully saved, False otherwise.
+        Raises:
+            Exception: If there is an error while writing to the file, it prints an error message and returns False.
+        """
+        
+        print(f"\nSaving the tokens to the {self.tokenPath} file...")
+        data = (f'accessToken={self.sf_access_token}\nrefreshToken={self.sf_refresh_token}\n')
+
+        try:
+            with open(self.tokenPath, 'w') as file:
+                file.write(data)
+            print('Tokens saved successfully! \n')
+            return True
+        
+        except Exception as e:
+            print(f'Error while saving the token: {e} \n\n')
+            return False
+
+
 
     def webServerFlow(self, secretCode : str):
         """
@@ -223,60 +284,6 @@ class oAuthController:
         else:
             return False
         
-
-    def localTokenHandler_save(self):
-        """
-        Saves the access and refresh tokens to a file specified by `self.tokenPath`.
-
-        Returns:
-            bool: True if the tokens were successfully saved, False otherwise.
-        Raises:
-            Exception: If there is an error while writing to the file, it prints an error message and returns False.
-        """
-        
-        print(f"\nSaving the tokens to the {self.tokenPath} file...")
-        data = (f'accessToken={self.sf_access_token}\nrefreshToken={self.sf_refresh_token}\n')
-
-        try:
-            with open(self.tokenPath, 'w') as file:
-                file.write(data)
-            print('Tokens saved successfully! \n')
-            return True
-        
-        except Exception as e:
-            print(f'Error while saving the token: {e} \n\n')
-            return False
-
-
-    def localTokenHandler_load(self):
-        """
-        Loads the Salesforce access and refresh tokens into self from a local file specified by `self.tokenPath`.
-        
-        Returns:
-            bool: True if the tokens were successfully loaded, False otherwise.
-        Raises:
-            Exception: If there is an error while reading the file or parsing the tokens.
-        """
-        
-        try:
-            if not os.path.exists(self.tokenPath) or not os.path.isfile(self.tokenPath):
-                print(f'Token file not found at {self.tokenPath}')
-                return False
-           
-            with open(self.tokenPath, 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    if 'accessToken' in line:
-                        self.sf_access_token = line.split('=')[1].strip()
-                    elif 'refreshToken' in line:
-                        self.sf_refresh_token = line.split('=')[1].strip()
-            print(f'Tokens loaded successfully from {self.tokenPath} \n')
-            return True
-
-        except Exception as e:
-            print(f'Error while loading the token: {e}')
-            return False
-        
     def checkTokenExpiry(self):
         """
         Checks if the Salesforce access token has expired and refreshes it if necessary.
@@ -338,7 +345,11 @@ class oAuthController:
             if not initRefreshTokenResult:
                 print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
                 retry : bool = True
-                inputRetry = input()
+                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+                inputRetry = 'n'
+                i, o, e = select.select([sys.stdin], [], [], 10)
+                if i:
+                    inputRetry = sys.stdin.readline().strip()
 
                 if inputRetry.lower() == 'n':
                     retry = False
@@ -357,7 +368,6 @@ class oAuthController:
                 initComplete = True
                 
         return initComplete
-        
 
 
 if __name__ == '__main__':
