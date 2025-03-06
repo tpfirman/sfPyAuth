@@ -56,7 +56,7 @@ SF_USERNAME=your_username_here
 To use `sfPyAuth` as a library, import and instantiate the `oAuthController` class:
 
 ```python
-from oAuth import oAuthController
+from src.sfPyAuth.sfPyAuth import oAuthController
 
 oauth = oAuthController()
 ```
