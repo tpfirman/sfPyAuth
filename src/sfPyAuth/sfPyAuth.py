@@ -27,6 +27,8 @@ import webbrowser
 import urllib.parse
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import sys
+import select
 
 devmode : bool = True
 
@@ -343,7 +345,11 @@ class oAuthController:
             if not initRefreshTokenResult:
                 print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
                 retry : bool = True
-                inputRetry = input()
+                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+                inputRetry = 'n'
+                i, o, e = select.select([sys.stdin], [], [], 10)
+                if i:
+                    inputRetry = sys.stdin.readline().strip()
 
                 if inputRetry.lower() == 'n':
                     retry = False

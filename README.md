@@ -84,8 +84,6 @@ print(result)
 ## Plans
 * Provide way to authenticate without user interaction (for use in serverless/headless environments)
 * Implement key management (Azure/AWS) as an option
-* Tests
-
 
 ## Contributing
 If you want to contribute, feel free.

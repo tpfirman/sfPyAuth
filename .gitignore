@@ -164,3 +164,5 @@ cython_debug/
 # Tokens should not be synched
 .tokens/
 
+.vscode/settings.json
+.vscode/PythonImportHelper-v2-Completion.json
