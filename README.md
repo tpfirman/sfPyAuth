@@ -82,10 +82,10 @@ print(result)
 ```
 
 ## Plans
-* Refactor to improve structure (this is a very rushed build out)
 * Provide way to authenticate without user interaction (for use in serverless/headless environments)
 * Implement key management (Azure/AWS) as an option
-* Do we really need a library for handling .env files?
+* Tests
+
 
 ## Contributing
 If you want to contribute, feel free.
