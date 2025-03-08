@@ -42,8 +42,6 @@ class oAuthController:
     def __init__(self):
         
         ## Populate instance variables from .env file
-
-        #straight load
         load_dotenv()        
         self.sf_username : str = os.getenv('SF_USERNAME')
         self.sf_password : str = os.getenv('SF_PASSWORD')
