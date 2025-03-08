@@ -31,7 +31,7 @@ import sys
 import select
 
 from SecretManager import SecretsManager
-devmode : bool = True
+devmode : bool = False
 
 class oAuthController:
     def __new__(cls, *args, **kwargs):
