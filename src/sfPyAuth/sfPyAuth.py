@@ -30,7 +30,7 @@ from datetime import datetime, timedelta
 import sys
 import select
 
-from src.sfPyAuth.SecretManager import SecretsManager
+from SecretManager import SecretsManager
 devmode : bool = True
 
 class oAuthController:
@@ -69,7 +69,7 @@ class oAuthController:
         else:
             print('Error while initializing the oAuth module. Exiting...\n------------------------------------------\n\n')
             os._exit(1)
-        
+           
         
     def webServerFlow(self, secretCode : str):
         """
@@ -273,33 +273,34 @@ class oAuthController:
                     initComplete = True
                 else:
                     print('Error while updating the refresh token. Moving on to secret code generation')        
-            
-            initRefreshTokenResult : bool = self.initRefreshToken()
 
-            if not initRefreshTokenResult:
-                print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
-                retry : bool = True
-                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
-                inputRetry = 'n'
-                i, o, e = select.select([sys.stdin], [], [], 10)
-                if i:
-                    inputRetry = sys.stdin.readline().strip()
+            else:            
+                initRefreshTokenResult : bool = self.initRefreshToken()
 
-                if inputRetry.lower() == 'n':
-                    retry = False
+                if not initRefreshTokenResult:
+                    print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
+                    retry : bool = True
+                    print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+                    inputRetry = 'n'
+                    i, o, e = select.select([sys.stdin], [], [], 10)
+                    if i:
+                        inputRetry = sys.stdin.readline().strip()
 
-                if retry:
-                    initRefreshTokenResult : bool = self.initRefreshToken()
+                    if inputRetry.lower() == 'n':
+                        retry = False
 
-                    if not initRefreshTokenResult:
-                        print('Error while authenticating with the secret code provided. Exiting...')
+                    if retry:
+                        initRefreshTokenResult : bool = self.initRefreshToken()
+
+                        if not initRefreshTokenResult:
+                            print('Error while authenticating with the secret code provided. Exiting...')
+                            initComplete = False
+                    else:
+                        print('Exiting...')
                         initComplete = False
+                        
                 else:
-                    print('Exiting...')
-                    initComplete = False
-                    
-            else:
-                initComplete = True
+                    initComplete = True
                 
         return initComplete
 

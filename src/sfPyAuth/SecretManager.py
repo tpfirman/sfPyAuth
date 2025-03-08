@@ -24,7 +24,7 @@ class SecretsManager:
             return
         
         self.accessToken : str = None
-        self.refreshToke : str = None
+        self.refreshToken : str = None
         
         self.get_secret()
         
