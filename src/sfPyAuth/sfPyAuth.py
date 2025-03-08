@@ -52,7 +52,11 @@ class oAuthController:
         self.sf_apiVersion : str = 'v60.0'
         self.sf_base_url : str = None
         
+<<<<<<< HEAD:sfPyAuth
+        self.tokenFolder : str = os.path.join(os.getcwd(), '.tokens')
+=======
         self.tokenFolder : str = os.path.join(os.getcwd(),'src','sfPyAuth', '.tokens')
+>>>>>>> origin/main:src/sfPyAuth/sfPyAuth.py
         self.tokenFileName : str = '.token'
         self.tokenPath = os.path.join(self.tokenFolder, self.tokenFileName)
         self.sf_access_token : str = None
