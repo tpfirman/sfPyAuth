@@ -40,14 +40,12 @@ My shorthand version:
 - `SF_USERNAME`: The username of the Salesforce user you want to authenticate as.
 - `SF_INSTANCE_URL`: (OPTIONAL) The instance URL of your Salesforce org (e.g., `https://login.salesforce.com`). This will usually autodetect.
 - `SALESFORCE_API_VERSION`: (OPTIONAL) API version you want to use for authentication. This will usually autodetect.
-
-#### Example .env file
-
-```
-SF_CLIENT_ID=your_client_id_here
-SF_CLIENT_SECRET=your_client_secret_here
-SF_USERNAME=your_username_here
-```
+- `SECRET_MANAGEMENT_TYPE`: The type of secret management to use. Options are `local` (default) or `aws`. Also planned is Azure/
+- `AWS_ACCESS_KEY_ID`: Your AWS access key ID for AWS Secret Manager.
+- `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key for AWS Secret Manager.
+- `AWS_SESSION_TOKEN`: (OPTIONAL) Your AWS session token for AWS Secret Manager.
+- `AWSSM_SECRET_NAME`: The name of the secret in AWS Secret Manager.
+- `AWSSM_REGION_NAME`: The AWS region where your secret is stored.
 
 ## Usage
 
@@ -67,18 +65,52 @@ If there is no usable token (first use, token missing/invalid/expired), you will
 
 Once you have authenticated, copy the URL from the browser and paste it into the console. The script will extract the secret code and proceed to save the required tokens.
 
-### Using it to Get an Auth Token for Subsequent API Calls
+### Secret Management
 
-Once authenticated, you can use the access token for subsequent API calls:
+The `SecretManager` module handles the storage and retrieval of Salesforce tokens. It supports local file storage and AWS Secret Manager.
+
+Currently both a local .tokens file and AWS Secret Manager are supported options. Each are their own class, but are instiated under the SecretManager class. However it is a requierment all classes utlised by SecretManager must use the standrd 'get_secret' and 'set_secret' methods.
+
+#### Standardization and Requirements for `get_secret` and `set_secret` Functions
+
+All secret management classes must implement the `get_secret` and `set_secret` methods. These methods are responsible for retrieving and storing the `accessToken` and `refreshToken` variables.
+
+- `get_secret`: This method should retrieve the stored tokens and return them in a dictionary with keys `accessToken` and `refreshToken`. If the tokens are not found, it should return `None`.
+- `set_secret`: This method should accept `accessToken` and `refreshToken` as parameters and store them securely.
+
+Example structure for `get_secret` and `set_secret` methods:
 
 ```python
-from simple_salesforce import Salesforce
+def get_secret(self):
+    # Retrieve tokens from storage
+    secret = {
+        'accessToken': self.accessToken,
+        'refreshToken': self.refreshToken
+    }
+    return secret
 
-oauth.checkTokenExpiry()
+def set_secret(self, accessToken, refreshToken):
+    # Store tokens securely
+    self.accessToken = accessToken
+    self.refreshToken = refreshToken
+    # Save tokens to storage
+```
 
-sf = Salesforce(instance_url=oauth.sf_instanceUrl, session_id=oauth.sf_access_token)
-result = sf.query("SELECT Id FROM Account LIMIT 1")
-print(result)
+#### Local Secret Management
+
+By default, tokens are stored in a local file. The file is located in the `.tokens` directory within the `src/sfPyAuth` directory.
+
+#### AWS Secret Manager
+
+To use AWS Secret Manager, set the `SECRET_MANAGEMENT_TYPE` to `aws` in your `.env` file and provide the necessary AWS credentials and secret details.
+
+```env
+SECRET_MANAGEMENT_TYPE=aws
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_SESSION_TOKEN=your_session_token (optional)
+AWSSM_SECRET_NAME=your_secret_name
+AWSSM_REGION_NAME=your_region_name
 ```
 
 ## Plans

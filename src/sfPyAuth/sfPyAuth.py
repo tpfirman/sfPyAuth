@@ -30,6 +30,7 @@ from datetime import datetime, timedelta
 import sys
 import select
 
+from SecretManager import SecretsManager
 devmode : bool = True
 
 class oAuthController:
@@ -41,8 +42,6 @@ class oAuthController:
     def __init__(self):
         
         ## Populate instance variables from .env file
-
-        #straight load
         load_dotenv()        
         self.sf_username : str = os.getenv('SF_USERNAME')
         self.sf_password : str = os.getenv('SF_PASSWORD')
@@ -50,17 +49,8 @@ class oAuthController:
         self.sf_consumer_secret : str = os.getenv('SF_CLIENT_SECRET')
         self.sf_instanceUrl : str = os.getenv('SF_INSTANCE_URL')
         self.sf_apiVersion : str = 'v60.0'
-        self.sf_base_url : str = None
+        self.sf_base_url : str = None      
         
-<<<<<<< HEAD:sfPyAuth
-        self.tokenFolder : str = os.path.join(os.getcwd(), '.tokens')
-=======
-        self.tokenFolder : str = os.path.join(os.getcwd(),'src','sfPyAuth', '.tokens')
->>>>>>> origin/main:src/sfPyAuth/sfPyAuth.py
-        self.tokenFileName : str = '.token'
-        self.tokenPath = os.path.join(self.tokenFolder, self.tokenFileName)
-        self.sf_access_token : str = None
-        self.sf_refresh_token : str = None
         self.sf_access_token_expires : str = None
 
         # Check if the required info is available before moving on.
@@ -68,79 +58,17 @@ class oAuthController:
             print('Error: Salesforce credentials are not set in the environment variables. Exiting...')
             os._exit(1)
            
-        ## Action initTasks
-        if os.path.exists(self.tokenFolder):
-            self.localTokenHandler_load()
-        else:
-            try:
-                os.mkdir(self.tokenFolder)
-            except Exception as e:
-                print(f'Error while creating the token directory: {e}')
-                os._exit(1) 
-        
+        self.sm = SecretsManager()
+        self.sm.get_secret()
+                
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
             print('oAuth module Initialised. Ready to roll...\n------------------------------------------\n\n')
         else:
             print('Error while initializing the oAuth module. Exiting...\n------------------------------------------\n\n')
             os._exit(1)
-            
-            
-    def localTokenHandler_load(self):
-        """
-        Loads the Salesforce access and refresh tokens into self from a local file specified by `self.tokenPath`.
-        
-        Returns:
-            bool: True if the tokens were successfully loaded, False otherwise.
-        Raises:
-            Exception: If there is an error while reading the file or parsing the tokens.
-        """
-        
-        try:
-            if not os.path.exists(self.tokenPath) or not os.path.isfile(self.tokenPath):
-                print(f'Token file not found at {self.tokenPath}')
-                return False
            
-            with open(self.tokenPath, 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    if 'accessToken' in line:
-                        self.sf_access_token = line.split('=')[1].strip()
-                    elif 'refreshToken' in line:
-                        self.sf_refresh_token = line.split('=')[1].strip()
-            print(f'Tokens loaded successfully from {self.tokenPath} \n')
-            return True
-
-        except Exception as e:
-            print(f'Error while loading the token: {e}')
-            return False
         
-        
-    def localTokenHandler_save(self):
-        """
-        Saves the access and refresh tokens to a file specified by `self.tokenPath`.
-
-        Returns:
-            bool: True if the tokens were successfully saved, False otherwise.
-        Raises:
-            Exception: If there is an error while writing to the file, it prints an error message and returns False.
-        """
-        
-        print(f"\nSaving the tokens to the {self.tokenPath} file...")
-        data = (f'accessToken={self.sf_access_token}\nrefreshToken={self.sf_refresh_token}\n')
-
-        try:
-            with open(self.tokenPath, 'w') as file:
-                file.write(data)
-            print('Tokens saved successfully! \n')
-            return True
-        
-        except Exception as e:
-            print(f'Error while saving the token: {e} \n\n')
-            return False
-
-
-
     def webServerFlow(self, secretCode : str):
         """
         Authenticates with Salesforce using the OAuth 2.0 Web Server Flow.
@@ -174,12 +102,12 @@ class oAuthController:
             print('Authenticated successfully')
 
         jsonResponse = response.json()
-        self.sf_access_token = jsonResponse['access_token']
-        self.sf_refresh_token = jsonResponse['refresh_token']        
-        self.sf_access_token_expires = datetime.now() + timedelta(hours=4)
+        self.sm.accessToken = jsonResponse['access_token']
+        self.sm.refreshToken = jsonResponse['refresh_token']        
+        self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
 
         # save the tokens to the token file
-        self.localTokenHandler_save()
+        self.sm.set_secret()
 
         return True
     
@@ -218,7 +146,7 @@ class oAuthController:
         """
 
         # Setup and send the request
-        if self.sf_access_token == None:
+        if self.sm.accessToken == None:
             print('Access token is not set')
             return False
         if self.sf_instanceUrl == None:
@@ -227,7 +155,7 @@ class oAuthController:
 
         url = f'{self.sf_instanceUrl}/services/data/{self.sf_apiVersion}/query/?q=SELECT+Id+FROM+User+LIMIT+1'
         headers = {
-            'Authorization' : f'Bearer {self.sf_access_token}'
+            'Authorization' : f'Bearer {self.sm.accessToken}'
         }
 
         response = requests.request("GET", url, headers=headers)  
@@ -253,7 +181,7 @@ class oAuthController:
             bool: True if the refresh token is successfully obtained and updated, False otherwise.
         """
 
-        if not self.sf_refresh_token:
+        if not self.sm.refreshToken:
             print('Refresh token is not set, cannot proceed')
             return False
 
@@ -266,7 +194,7 @@ class oAuthController:
             'client_id': self.sf_consumer_key,
             'client_secret': self.sf_consumer_secret,
             'format': 'json',
-            'refresh_token' : self.sf_refresh_token
+            'refresh_token' : self.sm.refreshToken
         }
 
         response = requests.request("POST", oauthUrl, headers=headers, data=payload)
@@ -275,13 +203,13 @@ class oAuthController:
             print(f'Error while generating new Refresh Token. Status code: {response.status_code} \n {response.text}')
             return False
         else:
-            self.sf_refresh_token = response.json()['refresh_token']
-            self.sf_access_token = response.json()['access_token']
-            self.sf_access_token_expires = datetime.now() + timedelta(hours=4)
+            self.sm.refreshToken = response.json()['refresh_token']
+            self.sm.accessToken = response.json()['access_token']
+            self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
 
             print('Refresh token has been updated successfully')
             
-        saveResult : bool = self.localTokenHandler_save()
+        saveResult : bool = self.sm.set_secret()
         if saveResult:
             print(f'New access token and refesh token saved successfully. \n')
             return True
@@ -296,7 +224,7 @@ class oAuthController:
         print('Checking token expiry')
         now = datetime.now()
 
-        if self.sf_access_token_expires == None or now > self.sf_access_token_expires:
+        if self.sf_accessToken_expires == None or now > self.sf_accessToken_expires:
             print('Token is expired, refreshing...')
             self.getNewRefreshToken()
         else:
@@ -334,7 +262,7 @@ class oAuthController:
         while not initComplete:
             
             # Check if the refresh token is populated
-            if self.sf_refresh_token:
+            if self.sm.refreshToken:
                 print('Refresh token is available in memory.')
 
                 refreshTokenUpdated : bool = self.getNewRefreshToken()
@@ -343,33 +271,34 @@ class oAuthController:
                     initComplete = True
                 else:
                     print('Error while updating the refresh token. Moving on to secret code generation')        
-            
-            initRefreshTokenResult : bool = self.initRefreshToken()
 
-            if not initRefreshTokenResult:
-                print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
-                retry : bool = True
-                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
-                inputRetry = 'n'
-                i, o, e = select.select([sys.stdin], [], [], 10)
-                if i:
-                    inputRetry = sys.stdin.readline().strip()
+            else:            
+                initRefreshTokenResult : bool = self.initRefreshToken()
 
-                if inputRetry.lower() == 'n':
-                    retry = False
+                if not initRefreshTokenResult:
+                    print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
+                    retry : bool = True
+                    print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+                    inputRetry = 'n'
+                    i, o, e = select.select([sys.stdin], [], [], 10)
+                    if i:
+                        inputRetry = sys.stdin.readline().strip()
 
-                if retry:
-                    initRefreshTokenResult : bool = self.initRefreshToken()
+                    if inputRetry.lower() == 'n':
+                        retry = False
 
-                    if not initRefreshTokenResult:
-                        print('Error while authenticating with the secret code provided. Exiting...')
+                    if retry:
+                        initRefreshTokenResult : bool = self.initRefreshToken()
+
+                        if not initRefreshTokenResult:
+                            print('Error while authenticating with the secret code provided. Exiting...')
+                            initComplete = False
+                    else:
+                        print('Exiting...')
                         initComplete = False
+                        
                 else:
-                    print('Exiting...')
-                    initComplete = False
-                    
-            else:
-                initComplete = True
+                    initComplete = True
                 
         return initComplete
 
