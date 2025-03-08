@@ -8,7 +8,7 @@ Classes:
     oAuthController: Handles OAuth authentication and token management for Salesforce.
 
 Usage:
-    from oAuth import oAuthController
+    from src.sfPyAuth.sfPyAuth import oAuthController
     from simple_salesforce import Salesforce
 
     oauth = oAuthController()
@@ -27,6 +27,8 @@ import webbrowser
 import urllib.parse
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import sys
+import select
 
 devmode : bool = True
 
@@ -50,7 +52,11 @@ class oAuthController:
         self.sf_apiVersion : str = 'v60.0'
         self.sf_base_url : str = None
         
+<<<<<<< HEAD:sfPyAuth
         self.tokenFolder : str = os.path.join(os.getcwd(), '.tokens')
+=======
+        self.tokenFolder : str = os.path.join(os.getcwd(),'src','sfPyAuth', '.tokens')
+>>>>>>> origin/main:src/sfPyAuth/sfPyAuth.py
         self.tokenFileName : str = '.token'
         self.tokenPath = os.path.join(self.tokenFolder, self.tokenFileName)
         self.sf_access_token : str = None
@@ -343,7 +349,11 @@ class oAuthController:
             if not initRefreshTokenResult:
                 print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
                 retry : bool = True
-                inputRetry = input()
+                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+                inputRetry = 'n'
+                i, o, e = select.select([sys.stdin], [], [], 10)
+                if i:
+                    inputRetry = sys.stdin.readline().strip()
 
                 if inputRetry.lower() == 'n':
                     retry = False

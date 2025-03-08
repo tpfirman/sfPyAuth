@@ -56,7 +56,7 @@ SF_USERNAME=your_username_here
 To use `sfPyAuth` as a library, import and instantiate the `oAuthController` class:
 
 ```python
-from oAuth import oAuthController
+from src.sfPyAuth.sfPyAuth import oAuthController
 
 oauth = oAuthController()
 ```
@@ -84,8 +84,6 @@ print(result)
 ## Plans
 * Provide way to authenticate without user interaction (for use in serverless/headless environments)
 * Implement key management (Azure/AWS) as an option
-* Tests
-
 
 ## Contributing
 If you want to contribute, feel free.
