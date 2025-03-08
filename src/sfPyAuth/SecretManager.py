@@ -29,7 +29,13 @@ class SecretsManager:
         self.get_secret()
         
     def set_secret(self):
-        self._secretsManager.set_secret(self.accessToken, self.refreshToken)
+        try:
+            self._secretsManager.set_secret(self.accessToken, self.refreshToken)
+            return True
+        
+        except Exception as e:
+            print(f'Error while setting the secret {e}')
+            return False
         
     def get_secret(self):
         secret = self._secretsManager.get_secret()
@@ -172,12 +178,3 @@ class awsSecretsManager:
         secret = get_secret_value_response['SecretString']
         return json.loads(secret)
 
-
-sm = SecretsManager()
-sm.get_secret()
-
-sm.accessToken = 'newAccessToken'
-sm.refreshToken = 'newRefreshToken'
-sm.set_secret()
-sm.get_secret()
-print(f'Access Token: {sm.accessToken}\nRefesh Token: {sm.refreshToken}')

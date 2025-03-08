@@ -30,6 +30,7 @@ from datetime import datetime, timedelta
 import sys
 import select
 
+from src.sfPyAuth.SecretManager import SecretsManager
 devmode : bool = True
 
 class oAuthController:
@@ -52,8 +53,6 @@ class oAuthController:
         self.sf_apiVersion : str = 'v60.0'
         self.sf_base_url : str = None      
         
-        self.sf_access_token : str = None
-        self.sf_refresh_token : str = None
         self.sf_access_token_expires : str = None
 
         # Check if the required info is available before moving on.
@@ -61,8 +60,9 @@ class oAuthController:
             print('Error: Salesforce credentials are not set in the environment variables. Exiting...')
             os._exit(1)
            
-         
-        
+        self.sm = SecretsManager()
+        self.sm.get_secret()
+                
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
             print('oAuth module Initialised. Ready to roll...\n------------------------------------------\n\n')
@@ -104,12 +104,12 @@ class oAuthController:
             print('Authenticated successfully')
 
         jsonResponse = response.json()
-        self.sf_access_token = jsonResponse['access_token']
-        self.sf_refresh_token = jsonResponse['refresh_token']        
-        self.sf_access_token_expires = datetime.now() + timedelta(hours=4)
+        self.sm.accessToken = jsonResponse['access_token']
+        self.sm.refreshToken = jsonResponse['refresh_token']        
+        self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
 
         # save the tokens to the token file
-        self.localTokenHandler_save()
+        self.sm.set_secret()
 
         return True
     
@@ -148,7 +148,7 @@ class oAuthController:
         """
 
         # Setup and send the request
-        if self.sf_access_token == None:
+        if self.sm.accessToken == None:
             print('Access token is not set')
             return False
         if self.sf_instanceUrl == None:
@@ -157,7 +157,7 @@ class oAuthController:
 
         url = f'{self.sf_instanceUrl}/services/data/{self.sf_apiVersion}/query/?q=SELECT+Id+FROM+User+LIMIT+1'
         headers = {
-            'Authorization' : f'Bearer {self.sf_access_token}'
+            'Authorization' : f'Bearer {self.sm.accessToken}'
         }
 
         response = requests.request("GET", url, headers=headers)  
@@ -183,7 +183,7 @@ class oAuthController:
             bool: True if the refresh token is successfully obtained and updated, False otherwise.
         """
 
-        if not self.sf_refresh_token:
+        if not self.sm.refreshToken:
             print('Refresh token is not set, cannot proceed')
             return False
 
@@ -196,7 +196,7 @@ class oAuthController:
             'client_id': self.sf_consumer_key,
             'client_secret': self.sf_consumer_secret,
             'format': 'json',
-            'refresh_token' : self.sf_refresh_token
+            'refresh_token' : self.sm.refreshToken
         }
 
         response = requests.request("POST", oauthUrl, headers=headers, data=payload)
@@ -205,13 +205,13 @@ class oAuthController:
             print(f'Error while generating new Refresh Token. Status code: {response.status_code} \n {response.text}')
             return False
         else:
-            self.sf_refresh_token = response.json()['refresh_token']
-            self.sf_access_token = response.json()['access_token']
-            self.sf_access_token_expires = datetime.now() + timedelta(hours=4)
+            self.sm.refreshToken = response.json()['refresh_token']
+            self.sm.accessToken = response.json()['access_token']
+            self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
 
             print('Refresh token has been updated successfully')
             
-        saveResult : bool = self.localTokenHandler_save()
+        saveResult : bool = self.sm.set_secret()
         if saveResult:
             print(f'New access token and refesh token saved successfully. \n')
             return True
@@ -226,7 +226,7 @@ class oAuthController:
         print('Checking token expiry')
         now = datetime.now()
 
-        if self.sf_access_token_expires == None or now > self.sf_access_token_expires:
+        if self.sf_accessToken_expires == None or now > self.sf_accessToken_expires:
             print('Token is expired, refreshing...')
             self.getNewRefreshToken()
         else:
@@ -264,7 +264,7 @@ class oAuthController:
         while not initComplete:
             
             # Check if the refresh token is populated
-            if self.sf_refresh_token:
+            if self.sm.refreshToken:
                 print('Refresh token is available in memory.')
 
                 refreshTokenUpdated : bool = self.getNewRefreshToken()
