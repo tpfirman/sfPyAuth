@@ -1,12 +1,17 @@
 # sfPyAuth
 
-A simple Python library for authenticating to Salesforce.
+A simple Python library for authenticating to Salesforce using OAuth.
+
+## Features
+* OAuth token management
+* AWS Secret Manager or local `.tokens` file
+* Access and Refresh tokens available for API calls by external modules/packages
 
 ## Setup
 
 ### Create Connected App for Authentication in Salesforce
 
-Official Documentation from SF for reference:
+Official Documentation from Salesforce for reference:
 - [Create Connected App Basics](https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create_basics.htm&type=5)
 - [Create API Integration](https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create_api_integration.htm&type=5)
 
@@ -15,7 +20,7 @@ My shorthand version:
 2. Create a Connected App
 3. Fill in details in Basic Information
 4. Tick Enable API
-5. Set Callback URL to "https://login.salesforce.com/services/oauth2/success"
+5. Set Callback URL to `https://login.salesforce.com/services/oauth2/success`
 6. Add the minimum required OAuth scopes:
     - Access Content Resources (content)
     - Access custom permissions (custom_permissions)
@@ -40,7 +45,7 @@ My shorthand version:
 - `SF_USERNAME`: The username of the Salesforce user you want to authenticate as.
 - `SF_INSTANCE_URL`: (OPTIONAL) The instance URL of your Salesforce org (e.g., `https://login.salesforce.com`). This will usually autodetect.
 - `SALESFORCE_API_VERSION`: (OPTIONAL) API version you want to use for authentication. This will usually autodetect.
-- `SECRET_MANAGEMENT_TYPE`: The type of secret management to use. Options are `local` (default) or `aws`. Also planned is Azure/
+- `SECRET_MANAGEMENT_TYPE`: The type of secret management to use. Options are `local` (default) or `aws`. Also planned is Azure.
 - `AWS_ACCESS_KEY_ID`: Your AWS access key ID for AWS Secret Manager.
 - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key for AWS Secret Manager.
 - `AWS_SESSION_TOKEN`: (OPTIONAL) Your AWS session token for AWS Secret Manager.
@@ -69,7 +74,7 @@ Once you have authenticated, copy the URL from the browser and paste it into the
 
 The `SecretManager` module handles the storage and retrieval of Salesforce tokens. It supports local file storage and AWS Secret Manager.
 
-Currently both a local .tokens file and AWS Secret Manager are supported options. Each are their own class, but are instiated under the SecretManager class. However it is a requierment all classes utlised by SecretManager must use the standrd 'get_secret' and 'set_secret' methods.
+Currently, both a local `.tokens` file and AWS Secret Manager are supported options. Each is its own class, but they are instantiated under the `SecretManager` class. However, it is a requirement that all classes utilized by `SecretManager` must use the standard `get_secret` and `set_secret` methods.
 
 #### Standardization and Requirements for `get_secret` and `set_secret` Functions
 
@@ -113,9 +118,22 @@ AWSSM_SECRET_NAME=your_secret_name
 AWSSM_REGION_NAME=your_region_name
 ```
 
+##### Setting up AWS Secret Manager
+
+Please review AWS best practices and security documentation when setting up any AWS-related service. AWS official documentation can be found here: [AWS Secret Manager Documentation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html).
+
+Requirements for the Secret itself:
+* Secret Type: "Other type of secret"
+* Plaintext:
+  ```json
+  {
+    "accessToken": "", 
+    "refreshToken": ""
+  }
+  ```
+
 ## Plans
-* Provide way to authenticate without user interaction (for use in serverless/headless environments)
-* Implement key management (Azure/AWS) as an option
+* Provide a way to authenticate without user interaction (for use in serverless/headless environments)
 
 ## Contributing
 If you want to contribute, feel free.
@@ -123,10 +141,10 @@ If you want to contribute, feel free.
 1. Fork the repository.
 2. Create a new branch.
 3. Make/commit your changes.
-4. Raise PR, with the following details.
-    * Feature/Functionality/Fix you are implimenting
-    * Changes made.
-    * Any other details you feel are relevant.
+4. Raise a PR with the following details:
+    * Feature/Functionality/Fix you are implementing
+    * Changes made
+    * Any other details you feel are relevant
 
 ## License
 
