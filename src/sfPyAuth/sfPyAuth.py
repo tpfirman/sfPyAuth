@@ -50,15 +50,8 @@ class oAuthController:
         self.sf_consumer_secret : str = os.getenv('SF_CLIENT_SECRET')
         self.sf_instanceUrl : str = os.getenv('SF_INSTANCE_URL')
         self.sf_apiVersion : str = 'v60.0'
-        self.sf_base_url : str = None
+        self.sf_base_url : str = None      
         
-<<<<<<< HEAD:sfPyAuth
-        self.tokenFolder : str = os.path.join(os.getcwd(), '.tokens')
-=======
-        self.tokenFolder : str = os.path.join(os.getcwd(),'src','sfPyAuth', '.tokens')
->>>>>>> origin/main:src/sfPyAuth/sfPyAuth.py
-        self.tokenFileName : str = '.token'
-        self.tokenPath = os.path.join(self.tokenFolder, self.tokenFileName)
         self.sf_access_token : str = None
         self.sf_refresh_token : str = None
         self.sf_access_token_expires : str = None
@@ -68,15 +61,7 @@ class oAuthController:
             print('Error: Salesforce credentials are not set in the environment variables. Exiting...')
             os._exit(1)
            
-        ## Action initTasks
-        if os.path.exists(self.tokenFolder):
-            self.localTokenHandler_load()
-        else:
-            try:
-                os.mkdir(self.tokenFolder)
-            except Exception as e:
-                print(f'Error while creating the token directory: {e}')
-                os._exit(1) 
+         
         
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
@@ -84,63 +69,8 @@ class oAuthController:
         else:
             print('Error while initializing the oAuth module. Exiting...\n------------------------------------------\n\n')
             os._exit(1)
-            
-            
-    def localTokenHandler_load(self):
-        """
-        Loads the Salesforce access and refresh tokens into self from a local file specified by `self.tokenPath`.
-        
-        Returns:
-            bool: True if the tokens were successfully loaded, False otherwise.
-        Raises:
-            Exception: If there is an error while reading the file or parsing the tokens.
-        """
-        
-        try:
-            if not os.path.exists(self.tokenPath) or not os.path.isfile(self.tokenPath):
-                print(f'Token file not found at {self.tokenPath}')
-                return False
-           
-            with open(self.tokenPath, 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    if 'accessToken' in line:
-                        self.sf_access_token = line.split('=')[1].strip()
-                    elif 'refreshToken' in line:
-                        self.sf_refresh_token = line.split('=')[1].strip()
-            print(f'Tokens loaded successfully from {self.tokenPath} \n')
-            return True
-
-        except Exception as e:
-            print(f'Error while loading the token: {e}')
-            return False
         
         
-    def localTokenHandler_save(self):
-        """
-        Saves the access and refresh tokens to a file specified by `self.tokenPath`.
-
-        Returns:
-            bool: True if the tokens were successfully saved, False otherwise.
-        Raises:
-            Exception: If there is an error while writing to the file, it prints an error message and returns False.
-        """
-        
-        print(f"\nSaving the tokens to the {self.tokenPath} file...")
-        data = (f'accessToken={self.sf_access_token}\nrefreshToken={self.sf_refresh_token}\n')
-
-        try:
-            with open(self.tokenPath, 'w') as file:
-                file.write(data)
-            print('Tokens saved successfully! \n')
-            return True
-        
-        except Exception as e:
-            print(f'Error while saving the token: {e} \n\n')
-            return False
-
-
-
     def webServerFlow(self, secretCode : str):
         """
         Authenticates with Salesforce using the OAuth 2.0 Web Server Flow.
