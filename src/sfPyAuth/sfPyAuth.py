@@ -30,7 +30,7 @@ from datetime import datetime, timedelta
 import sys
 import select
 
-from SecretManager import SecretsManager
+from .SecretManager import SecretsManager
 devmode : bool = False
 
 class oAuthController:
