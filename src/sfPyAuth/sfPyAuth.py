@@ -30,8 +30,12 @@ from datetime import datetime, timedelta
 import sys
 import select
 
-from .SecretManager import SecretsManager
-devmode : bool = False
+try:
+    from .SecretManager import SecretsManager
+except ImportError:
+    from SecretManager import SecretsManager
+    
+devmode : bool = True
 
 class oAuthController:
     def __new__(cls, *args, **kwargs):
