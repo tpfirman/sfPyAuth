@@ -281,34 +281,34 @@ class oAuthController:
                 else:
                     print('Error while updating the refresh token. Moving on to secret code generation')        
 
-            else:            
-                initOauthResult : bool = self.initOauth()
-
-                # If auth fails prompt for the secret code again
-                if not initOauthResult:
-                    print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
-                    retry : bool = True
-                    print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
-                    inputRetry = 'n'
-                    i, o, e = select.select([sys.stdin], [], [], 10)
-                    if i:
-                        inputRetry = sys.stdin.readline().strip()
-
-                    if inputRetry.lower() == 'n':
-                        retry = False
-
-                    if retry:
-                        initOauthResult : bool = self.initOauth()
-
-                        if not initOauthResult:
-                            print('Error while authenticating with the secret code provided. Exiting...')
-                            initComplete = False
-                    else:
-                        print('Exiting...')
-                        initComplete = False
                         
+            initOauthResult : bool = self.initOauth()
+
+            # If auth fails prompt for the secret code again
+            if not initOauthResult:
+                print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
+                retry : bool = True
+                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+                inputRetry = 'n'
+                i, o, e = select.select([sys.stdin], [], [], 10)
+                if i:
+                    inputRetry = sys.stdin.readline().strip()
+
+                if inputRetry.lower() == 'n':
+                    retry = False
+
+                if retry:
+                    initOauthResult : bool = self.initOauth()
+
+                    if not initOauthResult:
+                        print('Error while authenticating with the secret code provided. Exiting...')
+                        initComplete = False
                 else:
-                    initComplete = True
+                    print('Exiting...')
+                    initComplete = False
+                    
+            else:
+                initComplete = True
                 
         return initComplete
 
