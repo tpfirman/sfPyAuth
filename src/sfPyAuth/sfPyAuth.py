@@ -30,8 +30,12 @@ from datetime import datetime, timedelta
 import sys
 import select
 
-from .SecretManager import SecretsManager
-devmode : bool = False
+try:
+    from .SecretManager import SecretsManager
+except ImportError:
+    from SecretManager import SecretsManager
+    
+devmode : bool = True
 
 class oAuthController:
     def __new__(cls, *args, **kwargs):
@@ -60,57 +64,16 @@ class oAuthController:
            
         self.sm = SecretsManager()
         self.sm.get_secret()
+        self.accessToken : str = self.sm.accessToken
+        self.refreshToken : str = self.sm.refreshToken
                 
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
             print('oAuth module Initialised. Ready to roll...\n------------------------------------------\n\n')
         else:
             print('Error while initializing the oAuth module. Exiting...\n------------------------------------------\n\n')
-            os._exit(1)
-           
-        
-    def webServerFlow(self, secretCode : str):
-        """
-        Authenticates with Salesforce using the OAuth 2.0 Web Server Flow.
-        Args:
-            secretCode (str): The authorization code received from Salesforce.
-        Returns:
-            bool: True if authentication is successful, False otherwise.
-        """
-        
-
-        oauthUrl = 'https://login.salesforce.com/services/oauth2/token'
-        headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        payload = {
-            'code': secretCode,
-            'grant_type': 'authorization_code',
-            'client_id': self.sf_consumer_key,
-            'client_secret': self.sf_consumer_secret,
-            'format': 'json',
-            'redirect_uri' : 'https://login.salesforce.com/services/oauth2/success',
-            'response_type' : 'code'
-        }
-
-        response = requests.request("POST", oauthUrl, headers=headers, data=payload)
-
-        if response.status_code != 200:
-            print('Error while authenticating')
-            return False
-        else:
-            print('Authenticated successfully')
-
-        jsonResponse = response.json()
-        self.sm.accessToken = jsonResponse['access_token']
-        self.sm.refreshToken = jsonResponse['refresh_token']        
-        self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
-
-        # save the tokens to the token file
-        self.sm.set_secret()
-
-        return True
-    
+            os._exit(1)       
+   
     
     def getSecretCodeFromOauth(self):
         """
@@ -174,14 +137,14 @@ class oAuthController:
             return False
 
 
-    def getNewRefreshToken(self):
+    def getOauthTokens(self):
         """
         Obtains a new refresh token using OAuth flow and class based variables.
         Returns:
             bool: True if the refresh token is successfully obtained and updated, False otherwise.
         """
 
-        if not self.sm.refreshToken:
+        if not self.refreshToken:
             print('Refresh token is not set, cannot proceed')
             return False
 
@@ -194,45 +157,59 @@ class oAuthController:
             'client_id': self.sf_consumer_key,
             'client_secret': self.sf_consumer_secret,
             'format': 'json',
-            'refresh_token' : self.sm.refreshToken
+            'refresh_token' : self.refreshToken
         }
 
         response = requests.request("POST", oauthUrl, headers=headers, data=payload)
 
+        saveResult : bool = False
         if response.status_code != 200:
             print(f'Error while generating new Refresh Token. Status code: {response.status_code} \n {response.text}')
             return False
         else:
-            self.sm.refreshToken = response.json()['refresh_token']
-            self.sm.accessToken = response.json()['access_token']
-            self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
-
-            print('Refresh token has been updated successfully')
             
-        saveResult : bool = self.sm.set_secret()
+            isUpdated : bool = False
+            if self.refreshToken != response.json()['refresh_token']:
+                self.refreshToken = response.json()['refresh_token']
+                isUpdated = True
+                
+            if self.accessToken != response.json()['access_token']:
+                self.accessToken = response.json()['access_token']
+                isUpdated = True
+            
+
+            if isUpdated:
+                self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
+                print('Refresh token has been updated successfully')
+                
+                saveResult = self.sm.set_secret(self.accessToken, self.refreshToken)
+        
         if saveResult:
             print(f'New access token and refesh token saved successfully. \n')
+            # self.refreshToken = self.sm.refreshToken
+            # self.accessToken = self.sm.accessToken
+            
             return True
         else:
             return False
         
-    def checkTokenExpiry(self):
-        """
-        Checks if the Salesforce access token has expired and refreshes it if necessary.
-        """
+    # def checkTokenExpiry(self):
+    #     """
+    #     Checks if the Salesforce access token has expired and refreshes it if necessary.
+    #     """
         
-        print('Checking token expiry')
-        now = datetime.now()
+    #     print('Checking token expiry')
+    #     now = datetime.now()
 
-        if self.sf_accessToken_expires == None or now > self.sf_accessToken_expires:
-            print('Token is expired, refreshing...')
-            self.getNewRefreshToken()
-        else:
-            print('Token is still valid')
+    #     if self.sf_accessToken_expires == None or now > self.sf_accessToken_expires:
+    #         print('Token is expired, refreshing...')
+    #         self.getOauthTokens()
+    #     else:
+    #         print('Token is still valid')
             
-        return
+    #     return
     
-    def initRefreshToken(self):
+    def initOauth(self):
         # Prompt user to generate a new secretCode for OAuth
         secretCode : str = self.getSecretCodeFromOauth()
 
@@ -248,7 +225,49 @@ class oAuthController:
         
         else:
             return False
+    
+    def webServerFlow(self, secretCode : str):
+        """
+        Authenticates with Salesforce using the OAuth 2.0 Web Server Flow.
+        Args:
+            secretCode (str): The authorization code received from Salesforce.
+        Returns:
+            bool: True if authentication is successful, False otherwise.
+        """
         
+
+        oauthUrl = 'https://login.salesforce.com/services/oauth2/token'
+        headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        payload = {
+            'code': secretCode,
+            'grant_type': 'authorization_code',
+            'client_id': self.sf_consumer_key,
+            'client_secret': self.sf_consumer_secret,
+            'format': 'json',
+            'redirect_uri' : 'https://login.salesforce.com/services/oauth2/success',
+            'response_type' : 'code'
+        }
+
+        response = requests.request("POST", oauthUrl, headers=headers, data=payload)
+
+        if response.status_code != 200:
+            print('Error while authenticating')
+            return False
+        else:
+            print('Authenticated successfully')
+
+        jsonResponse = response.json()
+        self.accessToken = jsonResponse['access_token']
+        self.refreshToken = jsonResponse['refresh_token']        
+        self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
+
+        # save the tokens to the token file
+        self.sm.set_secret(self.accessToken, self.refreshToken)
+
+        return True
+     
 
     def initTasks(self):
         """
@@ -257,50 +276,47 @@ class oAuthController:
         Returns:
             bool: True if the access token is valid or successfully updated, False otherwise.
         """
-        initComplete = None
+        
+        
+        # Check if the refresh token is populated
+        if self.refreshToken:
+            print('Refresh token is available in memory.')
 
-        while not initComplete:
-            
-            # Check if the refresh token is populated
-            if self.sm.refreshToken:
-                print('Refresh token is available in memory.')
+            refreshTokenUpdated : bool = self.getOauthTokens()
+            if refreshTokenUpdated:
+                print('Refresh and Access tokens have been updated successfully, and is ready to use.')
+                return True
+            else:
+                print('Error while updating the refresh token. Moving on to secret code generation')        
 
-                refreshTokenUpdated : bool = self.getNewRefreshToken()
-                if refreshTokenUpdated:
-                    print('Refresh and Access tokens have been updated successfully, and is ready to use.')
-                    initComplete = True
-                else:
-                    print('Error while updating the refresh token. Moving on to secret code generation')        
+                    
+        initOauthResult : bool = self.initOauth()
 
-            else:            
-                initRefreshTokenResult : bool = self.initRefreshToken()
+        # If auth fails prompt for the secret code again
+        if not initOauthResult:
+            print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
+            retry : bool = True
+            print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+            inputRetry = 'n'
+            i, o, e = select.select([sys.stdin], [], [], 10)
+            if i:
+                inputRetry = sys.stdin.readline().strip()
 
-                if not initRefreshTokenResult:
-                    print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
-                    retry : bool = True
-                    print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
-                    inputRetry = 'n'
-                    i, o, e = select.select([sys.stdin], [], [], 10)
-                    if i:
-                        inputRetry = sys.stdin.readline().strip()
+            if inputRetry.lower() == 'n':
+                retry = False
 
-                    if inputRetry.lower() == 'n':
-                        retry = False
+            if retry:
+                initOauthResult : bool = self.initOauth()
 
-                    if retry:
-                        initRefreshTokenResult : bool = self.initRefreshToken()
-
-                        if not initRefreshTokenResult:
-                            print('Error while authenticating with the secret code provided. Exiting...')
-                            initComplete = False
-                    else:
-                        print('Exiting...')
-                        initComplete = False
-                        
-                else:
-                    initComplete = True
+                if not initOauthResult:
+                    print('Error while authenticating with the secret code provided. Exiting...')
+                    return  False
+            else:
+                print('Exiting...')
+                return  False
                 
-        return initComplete
+        else:
+            return  True
 
 
 if __name__ == '__main__':

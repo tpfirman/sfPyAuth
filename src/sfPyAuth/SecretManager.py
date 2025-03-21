@@ -28,9 +28,9 @@ class SecretsManager:
         
         self.get_secret()
         
-    def set_secret(self):
+    def set_secret(self, accessToken, refreshToken):
         try:
-            self._secretsManager.set_secret(self.accessToken, self.refreshToken)
+            self._secretsManager.set_secret(accessToken, refreshToken)
             return True
         
         except Exception as e:
@@ -42,6 +42,7 @@ class SecretsManager:
         if secret != None:
             self.accessToken = secret['accessToken']
             self.refreshToken = secret['refreshToken']
+        return secret
         
 class localSecretsManager:
     def __init__(self):

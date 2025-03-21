@@ -90,7 +90,7 @@ class TestoAuthController(unittest.TestCase):
         self.assertTrue(result)
 
     @patch('src.sfPyAuth.sfPyAuth.requests.request')
-    def test_getNewRefreshToken(self, mock_request):
+    def test_getOauthTokens(self, mock_request):
         """
         Test obtaining a new refresh token using the existing refresh token.
         Expected outcome: A new refresh token and access token are obtained and assigned to the instance variables.
@@ -101,7 +101,7 @@ class TestoAuthController(unittest.TestCase):
             'access_token': 'new_access_token',
             'refresh_token': 'new_refresh_token'
         }
-        result = self.oauth.getNewRefreshToken()
+        result = self.oauth.getOauthTokens()
         self.assertTrue(result)
         self.assertEqual(self.oauth.sf_access_token, 'new_access_token')
         self.assertEqual(self.oauth.sf_refresh_token, 'new_refresh_token')
