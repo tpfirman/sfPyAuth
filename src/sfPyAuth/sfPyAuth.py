@@ -144,7 +144,7 @@ class oAuthController:
             bool: True if the refresh token is successfully obtained and updated, False otherwise.
         """
 
-        if not self.sm.refreshToken:
+        if not self.refreshToken:
             print('Refresh token is not set, cannot proceed')
             return False
 
@@ -157,27 +157,37 @@ class oAuthController:
             'client_id': self.sf_consumer_key,
             'client_secret': self.sf_consumer_secret,
             'format': 'json',
-            'refresh_token' : self.sm.refreshToken
+            'refresh_token' : self.refreshToken
         }
 
         response = requests.request("POST", oauthUrl, headers=headers, data=payload)
 
+        saveResult : bool = False
         if response.status_code != 200:
             print(f'Error while generating new Refresh Token. Status code: {response.status_code} \n {response.text}')
             return False
         else:
-            self.sm.refreshToken = response.json()['refresh_token']
-            self.sm.accessToken = response.json()['access_token']
-            self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
-
-            print('Refresh token has been updated successfully')
             
-        saveResult : bool = self.sm.set_secret()
+            isUpdated : bool = False
+            if self.refreshToken != response.json()['refresh_token']:
+                self.refreshToken = response.json()['refresh_token']
+                isUpdated = True
+                
+            if self.accessToken != response.json()['access_token']:
+                self.accessToken = response.json()['access_token']
+                isUpdated = True
+            
+
+            if isUpdated:
+                self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
+                print('Refresh token has been updated successfully')
+                
+                saveResult = self.sm.set_secret(self.accessToken, self.refreshToken)
         
         if saveResult:
             print(f'New access token and refesh token saved successfully. \n')
-            self.refreshToken = self.sm.refreshToken
-            self.accessToken = self.sm.accessToken
+            # self.refreshToken = self.sm.refreshToken
+            # self.accessToken = self.sm.accessToken
             
             return True
         else:
@@ -249,12 +259,12 @@ class oAuthController:
             print('Authenticated successfully')
 
         jsonResponse = response.json()
-        self.sm.accessToken = jsonResponse['access_token']
-        self.sm.refreshToken = jsonResponse['refresh_token']        
+        self.accessToken = jsonResponse['access_token']
+        self.refreshToken = jsonResponse['refresh_token']        
         self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
 
         # save the tokens to the token file
-        self.sm.set_secret()
+        self.sm.set_secret(self.accessToken, self.refreshToken)
 
         return True
      
@@ -266,51 +276,47 @@ class oAuthController:
         Returns:
             bool: True if the access token is valid or successfully updated, False otherwise.
         """
-        initComplete = None
+        
+        
+        # Check if the refresh token is populated
+        if self.refreshToken:
+            print('Refresh token is available in memory.')
 
-        while not initComplete:
-            
-            # Check if the refresh token is populated
-            if self.refreshToken:
-                print('Refresh token is available in memory.')
-
-                refreshTokenUpdated : bool = self.getOauthTokens()
-                if refreshTokenUpdated:
-                    print('Refresh and Access tokens have been updated successfully, and is ready to use.')
-                    initComplete = True
-                else:
-                    print('Error while updating the refresh token. Moving on to secret code generation')        
-
-                        
-            initOauthResult : bool = self.initOauth()
-
-            # If auth fails prompt for the secret code again
-            if not initOauthResult:
-                print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
-                retry : bool = True
-                print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
-                inputRetry = 'n'
-                i, o, e = select.select([sys.stdin], [], [], 10)
-                if i:
-                    inputRetry = sys.stdin.readline().strip()
-
-                if inputRetry.lower() == 'n':
-                    retry = False
-
-                if retry:
-                    initOauthResult : bool = self.initOauth()
-
-                    if not initOauthResult:
-                        print('Error while authenticating with the secret code provided. Exiting...')
-                        initComplete = False
-                else:
-                    print('Exiting...')
-                    initComplete = False
-                    
+            refreshTokenUpdated : bool = self.getOauthTokens()
+            if refreshTokenUpdated:
+                print('Refresh and Access tokens have been updated successfully, and is ready to use.')
+                return True
             else:
-                initComplete = True
+                print('Error while updating the refresh token. Moving on to secret code generation')        
+
+                    
+        initOauthResult : bool = self.initOauth()
+
+        # If auth fails prompt for the secret code again
+        if not initOauthResult:
+            print('Error while authenticating with the secret code provided. \nWould you like to try again?  (Y/n)')
+            retry : bool = True
+            print('Would you like to try again?  (Y/n) (default is "n" after 10 seconds): ', end='', flush=True)
+            inputRetry = 'n'
+            i, o, e = select.select([sys.stdin], [], [], 10)
+            if i:
+                inputRetry = sys.stdin.readline().strip()
+
+            if inputRetry.lower() == 'n':
+                retry = False
+
+            if retry:
+                initOauthResult : bool = self.initOauth()
+
+                if not initOauthResult:
+                    print('Error while authenticating with the secret code provided. Exiting...')
+                    return  False
+            else:
+                print('Exiting...')
+                return  False
                 
-        return initComplete
+        else:
+            return  True
 
 
 if __name__ == '__main__':
