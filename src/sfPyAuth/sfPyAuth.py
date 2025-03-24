@@ -63,9 +63,9 @@ class oAuthController:
             os._exit(1)
            
         self.sm = SecretsManager()
-        self.sm.get_secret()
-        self.accessToken : str = self.sm.accessToken
-        self.refreshToken : str = self.sm.refreshToken
+        secrets = self.sm.get_secret()
+        self.accessToken = secrets['accessToken'] if 'accessToken' in secrets else None
+        self.refreshToken = secrets['refreshToken'] if 'refreshToken' in secrets else None
                 
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
@@ -109,7 +109,7 @@ class oAuthController:
         """
 
         # Setup and send the request
-        if self.sm.accessToken == None:
+        if self.accessToken == None:
             print('Access token is not set')
             return False
         if self.sf_instanceUrl == None:
@@ -118,7 +118,7 @@ class oAuthController:
 
         url = f'{self.sf_instanceUrl}/services/data/{self.sf_apiVersion}/query/?q=SELECT+Id+FROM+User+LIMIT+1'
         headers = {
-            'Authorization' : f'Bearer {self.sm.accessToken}'
+            'Authorization' : f'Bearer {self.accessToken}'
         }
 
         response = requests.request("GET", url, headers=headers)  
