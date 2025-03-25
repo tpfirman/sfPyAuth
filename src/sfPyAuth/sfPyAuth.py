@@ -35,7 +35,7 @@ try:
 except ImportError:
     from SecretManager import SecretsManager
     
-devmode : bool = True
+devmode : bool = False
 
 class oAuthController:
     def __new__(cls, *args, **kwargs):
