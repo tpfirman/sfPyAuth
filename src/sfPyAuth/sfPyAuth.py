@@ -69,7 +69,10 @@ class oAuthController:
                 
         self.initComplete : bool = self.initTasks()
         if self.initComplete:
-            print('oAuth module Initialised. Ready to roll...\n------------------------------------------\n\n')
+            accessTokenWorks = self.testAccessToken()
+            if not accessTokenWorks:
+                print('Access token is not valid!')
+                
         else:
             print('Error while initializing the oAuth module. Exiting...\n------------------------------------------\n\n')
             os._exit(1)       
@@ -169,14 +172,17 @@ class oAuthController:
         else:
             
             isUpdated : bool = False
-            if self.refreshToken != response.json()['refresh_token']:
+            if 'refresh_token' in response.json() and self.refreshToken != response.json()['refresh_token']:
                 self.refreshToken = response.json()['refresh_token']
                 isUpdated = True
                 
             if self.accessToken != response.json()['access_token']:
                 self.accessToken = response.json()['access_token']
                 isUpdated = True
-            
+                
+            if self.sf_instanceUrl != response.json()['instance_url']:
+                self.sf_instanceUrl = response.json()['instance_url']
+                isUpdated = True            
 
             if isUpdated:
                 self.sf_accessToken_expires = datetime.now() + timedelta(hours=4)
